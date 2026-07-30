@@ -32,7 +32,7 @@ AI Summary Dashboard is a configurable web application that will collect informa
 ## Prerequisites
 
 - Go 1.25 or newer
-- Node.js 20 or newer and npm
+- Node.js 20 or newer and Corepack
 - Docker with Docker Compose (for Ollama)
 
 ## Setup
@@ -50,7 +50,7 @@ AI Summary Dashboard is a configurable web application that will collect informa
 
    ```sh
    cd frontend
-   npm install
+   corepack pnpm install
    ```
 
 ## Run
@@ -76,7 +76,7 @@ In another terminal, start the frontend:
 
 ```sh
 cd frontend
-npm run dev
+corepack pnpm dev
 ```
 
 Open http://localhost:5173.
