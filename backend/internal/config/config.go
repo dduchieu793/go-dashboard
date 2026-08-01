@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -25,21 +26,28 @@ func Load() (Config, error) {
 		FrontendOrigin: strings.TrimRight(strings.TrimSpace(os.Getenv("FRONTEND_ORIGIN")), "/"),
 	}
 
-	required := map[string]string{
-		"APP_ENV":         cfg.AppEnv,
-		"HTTP_PORT":       cfg.HTTPPort,
-		"OLLAMA_BASE_URL": cfg.OllamaBaseURL,
-		"OLLAMA_MODEL":    cfg.OllamaModel,
-		"FRONTEND_ORIGIN": cfg.FrontendOrigin,
+	required := []struct {
+		name  string
+		value string
+	}{
+		{name: "APP_ENV", value: cfg.AppEnv},
+		{name: "HTTP_PORT", value: cfg.HTTPPort},
+		{name: "OLLAMA_BASE_URL", value: cfg.OllamaBaseURL},
+		{name: "OLLAMA_MODEL", value: cfg.OllamaModel},
+		{name: "FRONTEND_ORIGIN", value: cfg.FrontendOrigin},
 	}
 	var missing []string
-	for name, value := range required {
-		if value == "" {
-			missing = append(missing, name)
+	for _, variable := range required {
+		if variable.value == "" {
+			missing = append(missing, variable.name)
 		}
 	}
 	if len(missing) > 0 {
 		return Config{}, fmt.Errorf("required environment variables are missing: %s", strings.Join(missing, ", "))
+	}
+	port, err := strconv.Atoi(cfg.HTTPPort)
+	if err != nil || port < 1 || port > 65535 {
+		return Config{}, errors.New("HTTP_PORT must be an integer between 1 and 65535")
 	}
 	if err := validateHTTPURL("OLLAMA_BASE_URL", cfg.OllamaBaseURL); err != nil {
 		return Config{}, err

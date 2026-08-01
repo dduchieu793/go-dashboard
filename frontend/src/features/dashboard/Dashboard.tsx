@@ -47,9 +47,14 @@ export function Dashboard() {
           <div className="status-grid">
             <StatusCard label="Backend status" available={state.health.status === 'ok'} />
             <StatusCard
-              label="Ollama status"
+              label="Ollama runtime"
               available={state.llm.available}
-              detail={state.llm.model ? `Model · ${state.llm.model}` : 'Model unavailable'}
+              detail={state.llm.available ? 'API is reachable' : 'API is unreachable'}
+            />
+            <StatusCard
+              label="Configured model"
+              available={state.llm.model_available}
+              detail={state.llm.model}
             />
           </div>
         )}

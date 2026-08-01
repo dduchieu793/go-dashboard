@@ -4,7 +4,8 @@ export type Health = {
 
 export type LLMStatus = {
   available: boolean
-  model?: string
+  model: string
+  model_available: boolean
 }
 
 async function getJSON<T>(path: string, signal: AbortSignal): Promise<T> {

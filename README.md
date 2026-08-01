@@ -41,6 +41,12 @@ AI Summary Dashboard is a configurable web application that will collect informa
 
    ```sh
    docker compose up -d
+   ```
+
+   Installing the configured model is optional for the Phase 0 status dashboard. The dashboard reports
+   runtime connectivity and model installation separately. Pull the model before using summarization:
+
+   ```sh
    docker compose exec ollama ollama pull llama3.2:1b
    ```
 
@@ -86,8 +92,8 @@ Open http://localhost:5173.
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
 | `GET` | `/health` | Backend process health |
-| `GET` | `/api/v1/system/llm-status` | Ollama connectivity and configured model |
+| `GET` | `/api/v1/system/llm-status` | Ollama connectivity and configured-model installation |
 
 ## Current milestone
 
-The skeleton includes configuration validation, structured logging, graceful shutdown, HTTP routing, a health check, an Ollama connectivity check, and a dashboard that displays both statuses. Data-source connectors, persistence, authentication, prompts, and AI inference are out of scope.
+The skeleton includes configuration validation, structured logging, graceful shutdown, HTTP routing, a health check, an Ollama connectivity and model-installation check, and a dashboard that displays those statuses. Data-source connectors, persistence, authentication, prompts, and AI inference are out of scope.

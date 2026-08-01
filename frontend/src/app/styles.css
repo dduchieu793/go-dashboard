@@ -55,7 +55,7 @@ h1 {
 
 .status-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -119,7 +119,7 @@ h1 {
   gap: 8px;
 }
 
-@media (max-width: 580px) {
+@media (max-width: 720px) {
   .page {
     padding: 24px 18px;
   }
