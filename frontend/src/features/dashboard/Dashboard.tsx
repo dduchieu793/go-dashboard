@@ -28,11 +28,10 @@ export function Dashboard() {
   }, [])
 
   return (
-    <main className="page">
-      <section className="dashboard">
+      <section className="dashboard system-panel" aria-labelledby="dashboard-title">
         <header>
           <p className="eyebrow">Local intelligence, clear overview</p>
-          <h1>AI Summary Dashboard</h1>
+          <h1 id="dashboard-title">AI Summary Dashboard</h1>
           <p className="intro">System readiness for your private summary workspace.</p>
         </header>
 
@@ -59,6 +58,5 @@ export function Dashboard() {
           </div>
         )}
       </section>
-    </main>
   )
 }

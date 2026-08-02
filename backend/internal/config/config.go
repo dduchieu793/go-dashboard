@@ -7,14 +7,18 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Config struct {
-	AppEnv         string
-	HTTPPort       string
-	OllamaBaseURL  string
-	OllamaModel    string
-	FrontendOrigin string
+	AppEnv          string
+	HTTPPort        string
+	OllamaBaseURL   string
+	OllamaModel     string
+	OllamaTimeout   time.Duration
+	OllamaKeepAlive string
+	FrontendOrigin  string
+	DatabasePath    string
 }
 
 func Load() (Config, error) {
@@ -24,6 +28,7 @@ func Load() (Config, error) {
 		OllamaBaseURL:  strings.TrimRight(strings.TrimSpace(os.Getenv("OLLAMA_BASE_URL")), "/"),
 		OllamaModel:    strings.TrimSpace(os.Getenv("OLLAMA_MODEL")),
 		FrontendOrigin: strings.TrimRight(strings.TrimSpace(os.Getenv("FRONTEND_ORIGIN")), "/"),
+		DatabasePath:   strings.TrimSpace(os.Getenv("DATABASE_PATH")),
 	}
 
 	required := []struct {
@@ -54,6 +59,25 @@ func Load() (Config, error) {
 	}
 	if err := validateHTTPURL("FRONTEND_ORIGIN", cfg.FrontendOrigin); err != nil {
 		return Config{}, err
+	}
+	timeoutValue := strings.TrimSpace(os.Getenv("OLLAMA_GENERATE_TIMEOUT"))
+	if timeoutValue == "" {
+		timeoutValue = "60s"
+	}
+	timeout, err := time.ParseDuration(timeoutValue)
+	if err != nil || timeout <= 0 {
+		return Config{}, errors.New("OLLAMA_GENERATE_TIMEOUT must be a positive duration")
+	}
+	cfg.OllamaTimeout = timeout
+	cfg.OllamaKeepAlive = strings.TrimSpace(os.Getenv("OLLAMA_KEEP_ALIVE"))
+	if cfg.OllamaKeepAlive == "" {
+		cfg.OllamaKeepAlive = "-1m"
+	}
+	if _, err := time.ParseDuration(cfg.OllamaKeepAlive); err != nil {
+		return Config{}, errors.New("OLLAMA_KEEP_ALIVE must be a duration such as 30m, -1m, or 0s")
+	}
+	if cfg.DatabasePath == "" {
+		cfg.DatabasePath = "./data/dashboard.db"
 	}
 	return cfg, nil
 }

@@ -11,6 +11,9 @@ import (
 	"testing"
 
 	"github.com/dduchieu793/go-dashboard/backend/internal/llm"
+	"github.com/dduchieu793/go-dashboard/backend/internal/summary"
+	"github.com/dduchieu793/go-dashboard/backend/internal/trigger"
+	"github.com/dduchieu793/go-dashboard/backend/internal/workflow"
 )
 
 type stubLLMClient struct {
@@ -21,9 +24,41 @@ func (client stubLLMClient) Status(context.Context) llm.Status {
 	return client.status
 }
 
+func (client stubLLMClient) Generate(context.Context, string) (llm.Generation, error) {
+	return llm.Generation{}, nil
+}
+
+type stubSummaryGenerator struct{}
+
+func (stubSummaryGenerator) Generate(context.Context, summary.Request) (summary.Result, error) {
+	return summary.Result{}, nil
+}
+
+type stubWorkflowApplication struct{}
+
+func (stubWorkflowApplication) Start(context.Context, trigger.Request) (workflow.Run, error) {
+	return workflow.Run{}, nil
+}
+
+func (stubWorkflowApplication) GetRun(context.Context, string) (workflow.Run, error) {
+	return workflow.Run{}, nil
+}
+
+func (stubWorkflowApplication) ListRuns(context.Context, int) ([]workflow.Run, error) {
+	return nil, nil
+}
+
+func (stubWorkflowApplication) Retry(context.Context, string) (workflow.Run, error) {
+	return workflow.Run{}, nil
+}
+
+func (stubWorkflowApplication) Cancel(context.Context, string) (workflow.Run, error) {
+	return workflow.Run{}, nil
+}
+
 func testRouter(status llm.Status) http.Handler {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	return NewRouter(logger, "http://localhost:5173", stubLLMClient{status: status})
+	return NewRouter(logger, "http://localhost:5173", stubLLMClient{status: status}, stubSummaryGenerator{}, stubWorkflowApplication{})
 }
 
 func TestHealth(t *testing.T) {

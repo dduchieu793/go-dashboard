@@ -11,7 +11,10 @@ func setValidEnvironment(t *testing.T) {
 	t.Setenv("HTTP_PORT", "8080")
 	t.Setenv("OLLAMA_BASE_URL", "http://localhost:11434")
 	t.Setenv("OLLAMA_MODEL", "llama3.2:1b")
+	t.Setenv("OLLAMA_GENERATE_TIMEOUT", "60s")
+	t.Setenv("OLLAMA_KEEP_ALIVE", "-1m")
 	t.Setenv("FRONTEND_ORIGIN", "http://localhost:5173")
+	t.Setenv("DATABASE_PATH", "./data/test.db")
 }
 
 func TestLoad(t *testing.T) {
@@ -39,8 +42,64 @@ func TestLoad(t *testing.T) {
 	if cfg.OllamaModel != "llama3.2:1b" {
 		t.Errorf("OllamaModel = %q, want llama3.2:1b", cfg.OllamaModel)
 	}
+	if cfg.OllamaTimeout.String() != "1m0s" {
+		t.Errorf("OllamaTimeout = %s, want 1m0s", cfg.OllamaTimeout)
+	}
+	if cfg.OllamaKeepAlive != "-1m" {
+		t.Errorf("OllamaKeepAlive = %q, want -1m", cfg.OllamaKeepAlive)
+	}
+	if cfg.DatabasePath != "./data/test.db" {
+		t.Errorf("DatabasePath = %q, want ./data/test.db", cfg.DatabasePath)
+	}
 	if cfg.FrontendOrigin != "http://localhost:5173" {
 		t.Errorf("FrontendOrigin = %q, want origin without trailing slash", cfg.FrontendOrigin)
+	}
+}
+
+func TestLoadUsesStorageAndKeepAliveDefaults(t *testing.T) {
+	setValidEnvironment(t)
+	t.Setenv("OLLAMA_KEEP_ALIVE", "")
+	t.Setenv("DATABASE_PATH", "")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.OllamaKeepAlive != "-1m" || cfg.DatabasePath != "./data/dashboard.db" {
+		t.Errorf("defaults = keepAlive %q, database %q", cfg.OllamaKeepAlive, cfg.DatabasePath)
+	}
+}
+
+func TestLoadRejectsInvalidKeepAlive(t *testing.T) {
+	setValidEnvironment(t)
+	t.Setenv("OLLAMA_KEEP_ALIVE", "forever")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "OLLAMA_KEEP_ALIVE") {
+		t.Fatalf("Load() error = %v, want keep-alive validation error", err)
+	}
+}
+
+func TestLoadUsesDefaultOllamaTimeout(t *testing.T) {
+	setValidEnvironment(t)
+	t.Setenv("OLLAMA_GENERATE_TIMEOUT", "")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.OllamaTimeout.String() != "1m0s" {
+		t.Errorf("OllamaTimeout = %s, want 1m0s", cfg.OllamaTimeout)
+	}
+}
+
+func TestLoadRejectsInvalidOllamaTimeout(t *testing.T) {
+	for _, timeout := range []string{"later", "0s", "-1s"} {
+		t.Run(timeout, func(t *testing.T) {
+			setValidEnvironment(t)
+			t.Setenv("OLLAMA_GENERATE_TIMEOUT", timeout)
+			_, err := Load()
+			if err == nil || !strings.Contains(err.Error(), "OLLAMA_GENERATE_TIMEOUT") {
+				t.Fatalf("Load() error = %v, want timeout validation error", err)
+			}
+		})
 	}
 }
 

@@ -9,9 +9,10 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/dduchieu793/go-dashboard/backend/internal/llm"
+	"github.com/dduchieu793/go-dashboard/backend/internal/summary"
 )
 
-func NewRouter(logger *slog.Logger, frontendOrigin string, llmClient llm.Client) http.Handler {
+func NewRouter(logger *slog.Logger, frontendOrigin string, llmClient llm.Client, summaryService summary.Generator, workflowApplication WorkflowApplication) http.Handler {
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
@@ -22,6 +23,13 @@ func NewRouter(logger *slog.Logger, frontendOrigin string, llmClient llm.Client)
 	health := NewHealthHandler(llmClient)
 	router.Get("/health", health.Health)
 	router.Get("/api/v1/system/llm-status", health.LLMStatus)
+	router.Post("/api/v1/summaries/generate", NewSummaryHandler(logger, summaryService).Generate)
+	workflows := NewWorkflowHandler(logger, workflowApplication)
+	router.Post("/api/v1/workflows/manual-summary/runs", workflows.StartManualSummary)
+	router.Get("/api/v1/workflow-runs", workflows.List)
+	router.Get("/api/v1/workflow-runs/{id}", workflows.Get)
+	router.Post("/api/v1/workflow-runs/{id}/retry", workflows.Retry)
+	router.Post("/api/v1/workflow-runs/{id}/cancel", workflows.Cancel)
 	return router
 }
 

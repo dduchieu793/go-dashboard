@@ -8,6 +8,7 @@
 *.out
 coverage.*
 vendor/
+backend/data/
 
 # Node
 node_modules/
