@@ -14,6 +14,8 @@ import (
 	"github.com/dduchieu793/go-dashboard/backend/internal/config"
 	"github.com/dduchieu793/go-dashboard/backend/internal/httpapi"
 	"github.com/dduchieu793/go-dashboard/backend/internal/llm"
+	"github.com/dduchieu793/go-dashboard/backend/internal/modelrouter"
+	"github.com/dduchieu793/go-dashboard/backend/internal/orchestration"
 	"github.com/dduchieu793/go-dashboard/backend/internal/storage"
 	"github.com/dduchieu793/go-dashboard/backend/internal/summary"
 	"github.com/dduchieu793/go-dashboard/backend/internal/workflow"
@@ -30,8 +32,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	ollamaClient := llm.NewOllamaClient(cfg.OllamaBaseURL, cfg.OllamaModel, cfg.OllamaTimeout, cfg.OllamaKeepAlive)
-	summaryService := summary.NewService(ollamaClient)
+	profiles := make([]modelrouter.Profile, 0, len(cfg.ModelProfiles))
+	for _, name := range []string{"general", "coding", "reasoning"} {
+		profile := cfg.ModelProfiles[name]
+		profiles = append(profiles, modelrouter.Profile{Name: name, Provider: profile.Provider, Model: profile.Model,
+			Client: llm.NewOllamaClient(cfg.OllamaBaseURL, profile.Model, profile.Timeout, profile.KeepAlive)})
+	}
+	modelRouter, err := modelrouter.New(profiles, map[string]string{
+		"summarize_text": "general", "classify_text": "general", "extract_action_items": "reasoning",
+	})
+	if err != nil {
+		logger.Error("create model router", "error", err)
+		os.Exit(1)
+	}
+	generalClient := modelRouter.Bind("summarize_text")
+	summaryService := summary.NewService(generalClient)
+	actionService := summary.NewService(modelRouter.Bind("extract_action_items"))
 	store, err := storage.Open(cfg.DatabasePath)
 	if err != nil {
 		logger.Error("open workflow database", "error", err)
@@ -41,7 +57,8 @@ func main() {
 	capabilities := capability.NewRegistry()
 	for _, registered := range []capability.Capability{
 		capability.NewSummarizeText(summaryService),
-		capability.NewExtractActionItems(summaryService),
+		capability.NewClassifyText(modelRouter.Bind("classify_text")),
+		capability.NewExtractActionItems(actionService),
 		capability.ComposeDashboardResult{},
 	} {
 		if err := capabilities.Register(registered); err != nil {
@@ -50,6 +67,11 @@ func main() {
 		}
 	}
 	manualSummary := workflow.ManualSummaryDefinition(cfg.OllamaTimeout)
+	workflowRegistry := workflow.NewRegistry()
+	if err := workflowRegistry.Register(manualSummary); err != nil {
+		logger.Error("register workflow", "error", err)
+		os.Exit(1)
+	}
 	executor, err := workflow.NewExecutor(manualSummary, capabilities, store, logger)
 	if err != nil {
 		logger.Error("create workflow executor", "error", err)
@@ -63,7 +85,16 @@ func main() {
 		logger.Error("start workflow worker", "error", err)
 		os.Exit(1)
 	}
-	router := httpapi.NewRouter(logger, cfg.FrontendOrigin, ollamaClient, summaryService, executor)
+	workflowService := orchestration.NewService(
+		orchestration.NewSelector(workflowRegistry, map[string]string{"manual_text": manualSummary.ID}),
+		executor,
+		manualSummary.ID,
+	)
+	router := httpapi.NewRouter(logger, cfg.FrontendOrigin, generalClient, summaryService, workflowService, httpapi.Catalogs{
+		Models:       modelRouter,
+		Capabilities: capabilities,
+		Workflows:    workflowRegistry,
+	})
 	server := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,
 		Handler:           router,

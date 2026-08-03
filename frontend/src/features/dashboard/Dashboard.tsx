@@ -1,10 +1,28 @@
 import { useEffect, useState } from 'react'
-import { getHealth, getLLMStatus, type Health, type LLMStatus } from '../../shared/api/system'
+import {
+  getCapabilities,
+  getHealth,
+  getLLMStatus,
+  getModelStatuses,
+  getWorkflows,
+  type CapabilityMetadata,
+  type Health,
+  type LLMStatus,
+  type ModelProfileStatus,
+  type WorkflowDefinition,
+} from '../../shared/api/system'
 import { StatusCard } from '../../shared/components/StatusCard'
 
 type DashboardState =
   | { phase: 'loading' }
-  | { phase: 'ready'; health: Health; llm: LLMStatus }
+  | {
+      phase: 'ready'
+      health: Health
+      llm: LLMStatus
+      profiles: ModelProfileStatus[]
+      capabilities: CapabilityMetadata[]
+      workflows: WorkflowDefinition[]
+    }
   | { phase: 'error'; message: string }
 
 export function Dashboard() {
@@ -13,8 +31,21 @@ export function Dashboard() {
   useEffect(() => {
     const controller = new AbortController()
 
-    Promise.all([getHealth(controller.signal), getLLMStatus(controller.signal)])
-      .then(([health, llm]) => setState({ phase: 'ready', health, llm }))
+    Promise.all([
+      getHealth(controller.signal),
+      getLLMStatus(controller.signal),
+      getModelStatuses(controller.signal),
+      getCapabilities(controller.signal),
+      getWorkflows(controller.signal),
+    ])
+      .then(([health, llm, models, capabilityCatalog, workflowCatalog]) => setState({
+        phase: 'ready',
+        health,
+        llm,
+        profiles: models.profiles,
+        capabilities: capabilityCatalog.capabilities,
+        workflows: workflowCatalog.workflows,
+      }))
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
           setState({
@@ -50,10 +81,23 @@ export function Dashboard() {
               available={state.llm.available}
               detail={state.llm.available ? 'API is reachable' : 'API is unreachable'}
             />
+            {state.profiles.map((profile) => (
+              <StatusCard
+                key={profile.name}
+                label={`${profile.name[0].toUpperCase()}${profile.name.slice(1)} model`}
+                available={profile.available && profile.model_available}
+                detail={`${profile.model}${profile.capabilities.length > 0 ? ` · ${profile.capabilities.length} capabilities` : ' · ready for routing'}`}
+              />
+            ))}
             <StatusCard
-              label="Configured model"
-              available={state.llm.model_available}
-              detail={state.llm.model}
+              label="Capability catalog"
+              available={state.capabilities.length > 0}
+              detail={`${state.capabilities.length} registered`}
+            />
+            <StatusCard
+              label="Workflow catalog"
+              available={state.workflows.length > 0}
+              detail={`${state.workflows.length} enabled`}
             />
           </div>
         )}

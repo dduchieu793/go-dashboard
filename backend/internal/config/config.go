@@ -19,6 +19,14 @@ type Config struct {
 	OllamaKeepAlive string
 	FrontendOrigin  string
 	DatabasePath    string
+	ModelProfiles   map[string]ModelProfile
+}
+
+type ModelProfile struct {
+	Provider  string
+	Model     string
+	Timeout   time.Duration
+	KeepAlive string
 }
 
 func Load() (Config, error) {
@@ -79,7 +87,39 @@ func Load() (Config, error) {
 	if cfg.DatabasePath == "" {
 		cfg.DatabasePath = "./data/dashboard.db"
 	}
+	codingKeepAlive, err := durationSetting("OLLAMA_CODING_KEEP_ALIVE", "15m")
+	if err != nil {
+		return Config{}, err
+	}
+	reasoningKeepAlive, err := durationSetting("OLLAMA_REASONING_KEEP_ALIVE", "0s")
+	if err != nil {
+		return Config{}, err
+	}
+	codingModel := strings.TrimSpace(os.Getenv("OLLAMA_CODING_MODEL"))
+	if codingModel == "" {
+		codingModel = "qwen2.5-coder:7b"
+	}
+	reasoningModel := strings.TrimSpace(os.Getenv("OLLAMA_REASONING_MODEL"))
+	if reasoningModel == "" {
+		reasoningModel = "deepseek-r1:8b"
+	}
+	cfg.ModelProfiles = map[string]ModelProfile{
+		"general":   {Provider: "ollama", Model: cfg.OllamaModel, Timeout: timeout, KeepAlive: cfg.OllamaKeepAlive},
+		"coding":    {Provider: "ollama", Model: codingModel, Timeout: timeout, KeepAlive: codingKeepAlive},
+		"reasoning": {Provider: "ollama", Model: reasoningModel, Timeout: timeout, KeepAlive: reasoningKeepAlive},
+	}
 	return cfg, nil
+}
+
+func durationSetting(name, fallback string) (string, error) {
+	value := strings.TrimSpace(os.Getenv(name))
+	if value == "" {
+		value = fallback
+	}
+	if _, err := time.ParseDuration(value); err != nil {
+		return "", fmt.Errorf("%s must be a duration", name)
+	}
+	return value, nil
 }
 
 func validateHTTPURL(name, value string) error {

@@ -14,6 +14,7 @@ import (
 	"github.com/dduchieu793/go-dashboard/backend/internal/artifact"
 	"github.com/dduchieu793/go-dashboard/backend/internal/capability"
 	"github.com/dduchieu793/go-dashboard/backend/internal/llm"
+	"github.com/dduchieu793/go-dashboard/backend/internal/modelrouter"
 	"github.com/dduchieu793/go-dashboard/backend/internal/trigger"
 )
 
@@ -286,7 +287,7 @@ func (executor *Executor) execute(ctx context.Context, run Run, control *runCont
 				return Run{}, err
 			}
 			stepCtx, stepCancel := context.WithTimeout(runCtx, stepDefinition.Timeout)
-			result, executeErr = resolved.Execute(stepCtx, input)
+			result, executeErr = resolved.Execute(modelrouter.WithProfile(stepCtx, step.ModelProfile), input)
 			stepCancel()
 			if runCtx.Err() != nil {
 				if control.userCancelled.Load() {

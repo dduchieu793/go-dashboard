@@ -6,7 +6,7 @@ AI Summary Dashboard is a local, controlled AI orchestration system. Requests fr
 
 - Backend: Go 1.25+, `net/http`, Chi, SQLite, `slog`
 - Frontend: React, TypeScript, Vite, TanStack Query
-- Local AI runtime: Ollama with `qwen3:4b` for the current general profile
+- Local AI runtime: Ollama with task-specific general, coding, and reasoning profiles
 - API style: REST
 
 ## Folder structure
@@ -20,6 +20,8 @@ AI Summary Dashboard is a local, controlled AI orchestration system. Requests fr
 │       ├── config/           # Environment configuration
 │       ├── httpapi/          # Router and HTTP handlers
 │       ├── llm/              # LLM connectivity abstraction
+│       ├── modelrouter/      # Capability-to-model profile routing
+│       ├── orchestration/    # Deterministic workflow selection boundary
 │       ├── storage/          # SQLite migrations and workflow persistence
 │       ├── summary/          # Summary service and prompt construction
 │       ├── trigger/          # Normalized incoming requests
@@ -41,10 +43,12 @@ AI Summary Dashboard is a local, controlled AI orchestration system. Requests fr
 
 ## Setup
 
-1. Start Ollama and install the general model:
+1. Start Ollama and install the model profiles:
 
    ```sh
    ollama pull qwen3:4b
+   ollama pull qwen2.5-coder:7b
+   ollama pull deepseek-r1:8b
    ```
 
    To use the optional Docker runtime instead:
@@ -81,8 +85,12 @@ $env:APP_ENV="development"
 $env:HTTP_PORT="8080"
 $env:OLLAMA_BASE_URL="http://localhost:11434"
 $env:OLLAMA_MODEL="qwen3:4b"
+$env:OLLAMA_CODING_MODEL="qwen2.5-coder:7b"
+$env:OLLAMA_REASONING_MODEL="deepseek-r1:8b"
 $env:OLLAMA_GENERATE_TIMEOUT="60s"
 $env:OLLAMA_KEEP_ALIVE="-1m"
+$env:OLLAMA_CODING_KEEP_ALIVE="15m"
+$env:OLLAMA_REASONING_KEEP_ALIVE="0s"
 $env:FRONTEND_ORIGIN="http://localhost:5173"
 $env:DATABASE_PATH="./data/dashboard.db"
 go run ./cmd/api
@@ -103,6 +111,9 @@ Open http://localhost:5173.
 | --- | --- | --- |
 | `GET` | `/health` | Backend process health |
 | `GET` | `/api/v1/system/llm-status` | Ollama and configured-model status |
+| `GET` | `/api/v1/system/model-statuses` | Readiness and capability mapping for every model profile |
+| `GET` | `/api/v1/capabilities` | Registered capability metadata and schemas |
+| `GET` | `/api/v1/workflows` | Enabled workflow definitions and routed steps |
 | `POST` | `/api/v1/summaries/generate` | Legacy direct manual summary |
 | `POST` | `/api/v1/workflows/manual-summary/runs` | Start the controlled manual-summary workflow |
 | `GET` | `/api/v1/workflow-runs` | List persisted workflow runs |
@@ -112,7 +123,7 @@ Open http://localhost:5173.
 
 ### Start a workflow run
 
-The current workflow summarizes the content, extracts action items, and composes a final dashboard result:
+The current workflow uses Qwen3 for summarization, DeepSeek for action extraction, and Go for deterministic composition:
 
 ```sh
 curl --request POST http://localhost:8080/api/v1/workflows/manual-summary/runs \
@@ -126,4 +137,4 @@ Failed runs can be retried from the dashboard or retry endpoint. Completed upstr
 
 ## Current milestone
 
-The current milestone proves orchestration with one predefined workflow, three registered capabilities, asynchronous single-worker execution, bounded retries, explicit retry and cancellation, SQLite persistence, startup recovery, and a workflow-run dashboard. Dynamic planning, Slack triggers, arbitrary tools, human approval, parallel execution, and multiple destinations remain out of scope.
+The current milestone provides a versioned workflow registry, deterministic request-to-workflow selection with persisted audit metadata, four registered capabilities (including `classify_text`), config-driven multi-model routing, readiness catalogs, asynchronous single-worker execution, bounded retries, explicit retry and cancellation, SQLite persistence, startup recovery, and a workflow-run dashboard. The next enhancement is Slack thread synchronization and versioned text context. File extraction, dynamic planning, arbitrary tools, human approval, parallel execution, and multiple destinations remain later work.

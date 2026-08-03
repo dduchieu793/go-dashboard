@@ -14,6 +14,8 @@ var ErrInvalidInput = errors.New("invalid capability input")
 
 const PromptVersion = "manual-summary-v1"
 
+var textInputSchema = json.RawMessage(`{"type":"object","required":["content"],"properties":{"content":{"type":"string","minLength":1}}}`)
+
 type textInput struct {
 	Content string `json:"content"`
 }
@@ -33,6 +35,18 @@ func NewExtractActionItems(service summary.Generator) Capability {
 }
 
 func (capability *summaryCapability) Name() string { return capability.name }
+
+func (capability *summaryCapability) Metadata() Metadata {
+	description := "Summarize source text into a concise result."
+	output := json.RawMessage(`{"type":"object","required":["summary","summary_type","model"],"properties":{"summary":{"type":"string"},"summary_type":{"type":"string"},"model":{"type":"string"}}}`)
+	profile := "general"
+	if capability.name == "extract_action_items" {
+		description = "Extract concrete actions, owners, and deadlines from source text."
+		profile = "reasoning"
+	}
+	return Metadata{Name: capability.name, Description: description, InputSchema: textInputSchema, OutputSchema: output,
+		DefaultModelProfile: profile, LLMBacked: true}
+}
 
 func (capability *summaryCapability) ValidateInput(input json.RawMessage) error {
 	var decoded textInput
@@ -73,6 +87,15 @@ type DashboardResult struct {
 }
 
 func (ComposeDashboardResult) Name() string { return "compose_dashboard_result" }
+
+func (ComposeDashboardResult) Metadata() Metadata {
+	return Metadata{
+		Name: "compose_dashboard_result", Description: "Compose summary and action artifacts into a dashboard result.",
+		InputSchema:  json.RawMessage(`{"type":"object","required":["summary","action_items"]}`),
+		OutputSchema: json.RawMessage(`{"type":"object","required":["summary","action_items","models"]}`),
+		LLMBacked:    false,
+	}
+}
 
 func (ComposeDashboardResult) ValidateInput(input json.RawMessage) error {
 	var decoded composeInput

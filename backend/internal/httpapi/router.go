@@ -12,7 +12,7 @@ import (
 	"github.com/dduchieu793/go-dashboard/backend/internal/summary"
 )
 
-func NewRouter(logger *slog.Logger, frontendOrigin string, llmClient llm.Client, summaryService summary.Generator, workflowApplication WorkflowApplication) http.Handler {
+func NewRouter(logger *slog.Logger, frontendOrigin string, llmClient llm.Client, summaryService summary.Generator, workflowApplication WorkflowApplication, configuredCatalogs ...Catalogs) http.Handler {
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
@@ -20,9 +20,17 @@ func NewRouter(logger *slog.Logger, frontendOrigin string, llmClient llm.Client,
 	router.Use(middleware.Recoverer)
 	router.Use(cors(frontendOrigin))
 
-	health := NewHealthHandler(llmClient)
+	var catalogs Catalogs
+	if len(configuredCatalogs) > 0 {
+		catalogs = configuredCatalogs[0]
+	}
+	health := NewHealthHandler(llmClient, catalogs.Models)
+	catalog := NewCatalogHandler(catalogs.Capabilities, catalogs.Workflows)
 	router.Get("/health", health.Health)
 	router.Get("/api/v1/system/llm-status", health.LLMStatus)
+	router.Get("/api/v1/system/model-statuses", health.ModelStatuses)
+	router.Get("/api/v1/capabilities", catalog.Capabilities)
+	router.Get("/api/v1/workflows", catalog.Workflows)
 	router.Post("/api/v1/summaries/generate", NewSummaryHandler(logger, summaryService).Generate)
 	workflows := NewWorkflowHandler(logger, workflowApplication)
 	router.Post("/api/v1/workflows/manual-summary/runs", workflows.StartManualSummary)

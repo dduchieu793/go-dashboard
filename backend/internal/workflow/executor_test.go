@@ -27,7 +27,10 @@ type staticCapability struct {
 	mu     sync.RWMutex
 }
 
-func (item *staticCapability) Name() string                        { return item.name }
+func (item *staticCapability) Name() string { return item.name }
+func (item *staticCapability) Metadata() capability.Metadata {
+	return capability.Metadata{Name: item.name}
+}
 func (item *staticCapability) ValidateInput(json.RawMessage) error { return nil }
 func (item *staticCapability) Execute(context.Context, json.RawMessage) (capability.Result, error) {
 	item.calls.Add(1)
@@ -213,7 +216,10 @@ type blockingCapability struct {
 	started chan struct{}
 }
 
-func (item *blockingCapability) Name() string                        { return item.name }
+func (item *blockingCapability) Name() string { return item.name }
+func (item *blockingCapability) Metadata() capability.Metadata {
+	return capability.Metadata{Name: item.name}
+}
 func (item *blockingCapability) ValidateInput(json.RawMessage) error { return nil }
 func (item *blockingCapability) Execute(ctx context.Context, _ json.RawMessage) (capability.Result, error) {
 	select {
@@ -262,7 +268,10 @@ type interruptOnceCapability struct {
 	calls   atomic.Int32
 }
 
-func (item *interruptOnceCapability) Name() string                        { return item.name }
+func (item *interruptOnceCapability) Name() string { return item.name }
+func (item *interruptOnceCapability) Metadata() capability.Metadata {
+	return capability.Metadata{Name: item.name}
+}
 func (item *interruptOnceCapability) ValidateInput(json.RawMessage) error { return nil }
 func (item *interruptOnceCapability) Execute(ctx context.Context, _ json.RawMessage) (capability.Result, error) {
 	if item.calls.Add(1) == 1 {

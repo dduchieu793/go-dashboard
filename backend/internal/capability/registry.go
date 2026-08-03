@@ -20,8 +20,18 @@ type Result struct {
 	PromptVersion string
 }
 
+type Metadata struct {
+	Name                string          `json:"name"`
+	Description         string          `json:"description"`
+	InputSchema         json.RawMessage `json:"input_schema"`
+	OutputSchema        json.RawMessage `json:"output_schema"`
+	DefaultModelProfile string          `json:"default_model_profile,omitempty"`
+	LLMBacked           bool            `json:"llm_backed"`
+}
+
 type Capability interface {
 	Name() string
+	Metadata() Metadata
 	ValidateInput(input json.RawMessage) error
 	Execute(ctx context.Context, input json.RawMessage) (Result, error)
 }
@@ -61,4 +71,13 @@ func (registry *Registry) Names() []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+func (registry *Registry) Metadata() []Metadata {
+	items := make([]Metadata, 0, len(registry.capabilities))
+	for _, item := range registry.capabilities {
+		items = append(items, item.Metadata())
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
+	return items
 }

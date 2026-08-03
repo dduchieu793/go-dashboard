@@ -30,6 +30,9 @@ func TestRegistry(t *testing.T) {
 	if names := registry.Names(); len(names) != 1 || names[0] != "summarize_text" {
 		t.Errorf("Names() = %v", names)
 	}
+	if metadata := registry.Metadata(); len(metadata) != 1 || metadata[0].DefaultModelProfile != "general" {
+		t.Errorf("Metadata() = %+v", metadata)
+	}
 }
 
 func TestTextCapabilitiesAndComposition(t *testing.T) {

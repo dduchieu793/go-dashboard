@@ -23,7 +23,7 @@ func ManualSummaryDefinition(modelTimeout time.Duration) Definition {
 				RetryPolicy: RetryPolicy{MaxAttempts: 2, Backoff: 250 * time.Millisecond},
 			},
 			{
-				ID: "actions", Capability: "extract_action_items", ModelProfile: "general",
+				ID: "actions", Capability: "extract_action_items", ModelProfile: "reasoning",
 				InputMapping: map[string]string{"content": "request.content"}, Timeout: stepTimeout,
 				RetryPolicy: RetryPolicy{MaxAttempts: 2, Backoff: 250 * time.Millisecond},
 			},

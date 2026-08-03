@@ -54,6 +54,38 @@ func TestLoad(t *testing.T) {
 	if cfg.FrontendOrigin != "http://localhost:5173" {
 		t.Errorf("FrontendOrigin = %q, want origin without trailing slash", cfg.FrontendOrigin)
 	}
+	if cfg.ModelProfiles["general"].Model != "llama3.2:1b" ||
+		cfg.ModelProfiles["coding"].Model != "qwen2.5-coder:7b" ||
+		cfg.ModelProfiles["reasoning"].Model != "deepseek-r1:8b" {
+		t.Errorf("ModelProfiles = %+v", cfg.ModelProfiles)
+	}
+	if cfg.ModelProfiles["reasoning"].KeepAlive != "0s" {
+		t.Errorf("reasoning keep-alive = %q, want 0s", cfg.ModelProfiles["reasoning"].KeepAlive)
+	}
+}
+
+func TestLoadUsesConfiguredModelProfiles(t *testing.T) {
+	setValidEnvironment(t)
+	t.Setenv("OLLAMA_CODING_MODEL", "coder-custom")
+	t.Setenv("OLLAMA_REASONING_MODEL", "reasoning-custom")
+	t.Setenv("OLLAMA_CODING_KEEP_ALIVE", "20m")
+	t.Setenv("OLLAMA_REASONING_KEEP_ALIVE", "30s")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ModelProfiles["coding"].Model != "coder-custom" || cfg.ModelProfiles["coding"].KeepAlive != "20m" ||
+		cfg.ModelProfiles["reasoning"].Model != "reasoning-custom" || cfg.ModelProfiles["reasoning"].KeepAlive != "30s" {
+		t.Fatalf("ModelProfiles = %+v", cfg.ModelProfiles)
+	}
+}
+
+func TestLoadRejectsInvalidProfileKeepAlive(t *testing.T) {
+	setValidEnvironment(t)
+	t.Setenv("OLLAMA_REASONING_KEEP_ALIVE", "later")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "OLLAMA_REASONING_KEEP_ALIVE") {
+		t.Fatalf("Load() error = %v", err)
+	}
 }
 
 func TestLoadUsesStorageAndKeepAliveDefaults(t *testing.T) {
