@@ -11,16 +11,29 @@ import (
 )
 
 type Config struct {
-	AppEnv          string
-	HTTPPort        string
-	OllamaBaseURL   string
-	OllamaModel     string
-	OllamaTimeout   time.Duration
-	OllamaKeepAlive string
-	FrontendOrigin  string
-	DatabasePath    string
-	ModelProfiles   map[string]ModelProfile
+	AppEnv                string
+	HTTPPort              string
+	OllamaBaseURL         string
+	OllamaModel           string
+	OllamaTimeout         time.Duration
+	OllamaKeepAlive       string
+	FrontendOrigin        string
+	DatabasePath          string
+	ModelProfiles         map[string]ModelProfile
+	Slack                 SlackConfig
+	AttachmentStoragePath string
 }
+
+type SlackConfig struct {
+	SigningSecret      string
+	BotToken           string
+	APIBaseURL         string
+	RequestTimeout     time.Duration
+	MaxContextMessages int
+	MaxContextChars    int
+}
+
+func (config SlackConfig) Enabled() bool { return config.SigningSecret != "" && config.BotToken != "" }
 
 type ModelProfile struct {
 	Provider  string
@@ -108,6 +121,38 @@ func Load() (Config, error) {
 		"coding":    {Provider: "ollama", Model: codingModel, Timeout: timeout, KeepAlive: codingKeepAlive},
 		"reasoning": {Provider: "ollama", Model: reasoningModel, Timeout: timeout, KeepAlive: reasoningKeepAlive},
 	}
+	cfg.Slack.SigningSecret = strings.TrimSpace(os.Getenv("SLACK_SIGNING_SECRET"))
+	cfg.Slack.BotToken = strings.TrimSpace(os.Getenv("SLACK_BOT_TOKEN"))
+	cfg.Slack.APIBaseURL = strings.TrimRight(strings.TrimSpace(os.Getenv("SLACK_API_BASE_URL")), "/")
+	if cfg.Slack.APIBaseURL == "" {
+		cfg.Slack.APIBaseURL = "https://slack.com/api"
+	}
+	if err := validateHTTPURL("SLACK_API_BASE_URL", cfg.Slack.APIBaseURL); err != nil {
+		return Config{}, err
+	}
+	if (cfg.Slack.SigningSecret == "") != (cfg.Slack.BotToken == "") {
+		return Config{}, errors.New("SLACK_SIGNING_SECRET and SLACK_BOT_TOKEN must be configured together")
+	}
+	slackTimeout, err := positiveDurationSetting("SLACK_REQUEST_TIMEOUT", "15s")
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.Slack.RequestTimeout = slackTimeout
+	cfg.Slack.MaxContextMessages, err = positiveIntSetting("SLACK_MAX_CONTEXT_MESSAGES", 200)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.Slack.MaxContextChars, err = positiveIntSetting("SLACK_MAX_CONTEXT_CHARS", 50000)
+	if err != nil {
+		return Config{}, err
+	}
+	if cfg.Slack.MaxContextChars < 1000 {
+		return Config{}, errors.New("SLACK_MAX_CONTEXT_CHARS must be at least 1000")
+	}
+	cfg.AttachmentStoragePath = strings.TrimSpace(os.Getenv("ATTACHMENT_STORAGE_PATH"))
+	if cfg.AttachmentStoragePath == "" {
+		cfg.AttachmentStoragePath = "./data/attachments"
+	}
 	return cfg, nil
 }
 
@@ -120,6 +165,30 @@ func durationSetting(name, fallback string) (string, error) {
 		return "", fmt.Errorf("%s must be a duration", name)
 	}
 	return value, nil
+}
+
+func positiveDurationSetting(name, fallback string) (time.Duration, error) {
+	value := strings.TrimSpace(os.Getenv(name))
+	if value == "" {
+		value = fallback
+	}
+	parsed, err := time.ParseDuration(value)
+	if err != nil || parsed <= 0 {
+		return 0, fmt.Errorf("%s must be a positive duration", name)
+	}
+	return parsed, nil
+}
+
+func positiveIntSetting(name string, fallback int) (int, error) {
+	value := strings.TrimSpace(os.Getenv(name))
+	if value == "" {
+		return fallback, nil
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed <= 0 {
+		return 0, fmt.Errorf("%s must be a positive integer", name)
+	}
+	return parsed, nil
 }
 
 func validateHTTPURL(name, value string) error {

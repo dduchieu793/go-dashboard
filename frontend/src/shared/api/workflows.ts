@@ -27,6 +27,16 @@ export type WorkflowArtifact = {
   created_at: string
 }
 
+export type WorkflowSource = {
+  id: string
+  kind: string
+  external_id: string
+  author_id?: string
+  content: string
+  occurred_at: string
+  metadata?: Record<string, string>
+}
+
 export type WorkflowRun = {
   id: string
   workflow_id: string
@@ -36,6 +46,8 @@ export type WorkflowRun = {
     source: string
     type: string
     content: string
+    metadata?: Record<string, string>
+    sources?: WorkflowSource[]
     received_at: string
   }
   status: RunStatus

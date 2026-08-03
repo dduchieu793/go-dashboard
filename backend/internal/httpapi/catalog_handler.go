@@ -17,9 +17,11 @@ type WorkflowCatalog interface {
 }
 
 type Catalogs struct {
-	Models       ModelCatalog
-	Capabilities CapabilityCatalog
-	Workflows    WorkflowCatalog
+	Models             ModelCatalog
+	Capabilities       CapabilityCatalog
+	Workflows          WorkflowCatalog
+	Slack              SlackApplication
+	SlackSigningSecret string
 }
 
 type CatalogHandler struct {

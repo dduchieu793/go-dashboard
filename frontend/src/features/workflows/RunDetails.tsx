@@ -32,6 +32,7 @@ export function RunDetails({
   const artifacts = run.artifacts ?? []
   const finalArtifact = artifacts.find((artifact) => artifact.id === run.final_artifact_id)
   const final = finalArtifact?.content as { summary?: string; action_items?: string; models?: string[] } | undefined
+  const sources = run.request.sources ?? []
 
   return (
     <section className="run-details" aria-labelledby="run-details-title">
@@ -73,6 +74,27 @@ export function RunDetails({
           <h3>Action items</h3>
           <p>{final.action_items}</p>
           {final.models && <p className="artifact-meta">Models: {final.models.join(', ')}</p>}
+        </div>
+      )}
+
+      {sources.length > 0 && (
+        <div className="source-messages">
+          <div className="source-messages-heading">
+            <div>
+              <p className="eyebrow">Analyzed context</p>
+              <h3>Source messages</h3>
+            </div>
+            {run.request.metadata?.context_version && <span>Version {run.request.metadata.context_version}</span>}
+          </div>
+          {sources.map((source) => (
+            <article className="source-message" key={source.id}>
+              <div>
+                <strong>{source.author_id || 'Unknown author'}</strong>
+                <span>{formatTime(source.occurred_at)} · {source.external_id}</span>
+              </div>
+              <p>{source.content}</p>
+            </article>
+          ))}
         </div>
       )}
 

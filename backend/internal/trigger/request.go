@@ -14,7 +14,18 @@ type Request struct {
 	Type       string            `json:"type"`
 	Content    string            `json:"content"`
 	Metadata   map[string]string `json:"metadata"`
+	Sources    []Source          `json:"sources,omitempty"`
 	ReceivedAt time.Time         `json:"received_at"`
+}
+
+type Source struct {
+	ID         string            `json:"id"`
+	Kind       string            `json:"kind"`
+	ExternalID string            `json:"external_id"`
+	AuthorID   string            `json:"author_id,omitempty"`
+	Content    string            `json:"content"`
+	OccurredAt time.Time         `json:"occurred_at"`
+	Metadata   map[string]string `json:"metadata,omitempty"`
 }
 
 func (request Request) Validate() error {

@@ -6,6 +6,7 @@ import type { WorkflowRun } from '../../shared/api/workflows'
 import { cancelWorkflowRun, retryWorkflowRun } from '../../shared/api/workflows'
 import { ManualWorkflowForm } from './ManualWorkflowForm'
 import { RunDetails } from './RunDetails'
+import { SlackThreadDashboard } from '../slack/SlackThreadDashboard'
 
 function testRun(): WorkflowRun {
   return {
@@ -67,6 +68,27 @@ describe('workflow UI', () => {
     expect(screen.getByText('Original source')).toBeInTheDocument()
   })
 
+  it('shows the exact Slack source messages and context version', () => {
+    const run = testRun()
+    run.request = {
+      ...run.request,
+      source: 'slack',
+      type: 'slack_thread',
+      metadata: { context_version: '3', channel_id: 'C1' },
+      sources: [{
+        id: 'message_1', kind: 'slack_message', external_id: '1710000000.000001', author_id: 'U1',
+        content: 'Slack source text', occurred_at: '2026-08-02T00:00:00Z',
+      }],
+    }
+
+    render(<RunDetails run={run} />)
+
+    expect(screen.getByText('Source messages')).toBeInTheDocument()
+    expect(screen.getByText('Version 3')).toBeInTheDocument()
+    expect(screen.getByText('Slack source text')).toBeInTheDocument()
+    expect(screen.getByText(/U1/)).toBeInTheDocument()
+  })
+
   it('offers retry for failed runs and cancellation for active runs', async () => {
     const user = userEvent.setup()
     const onRetry = vi.fn()
@@ -103,5 +125,24 @@ describe('workflow UI', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/v1/workflow-runs/run_1/retry', { method: 'POST' })
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/workflow-runs/run_1/cancel', { method: 'POST' })
+  })
+
+  it('shows synchronized Slack attachment processing state', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: string) => {
+      const body = input.includes('/attachments')
+        ? { attachments: [{ id: 'attachment_1', message_id: 'message_1', slack_file_id: 'F1', filename: 'plan.pdf', mime_type: 'application/pdf', size_bytes: 2048, download_status: 'pending', extraction_status: 'pending', is_removed: false }] }
+        : input.includes('/messages')
+          ? { messages: [{ id: 'message_1', slack_timestamp: '1710000000.000001', author_id: 'U1', text: 'Review the plan', is_parent: true, is_deleted: false }] }
+          : { threads: [{ id: 'thread_1', workspace_id: 'T1', channel_id: 'C1', thread_ts: '1710000000.000001', context_version: 2, sync_status: 'dirty', requested_analysis_version: 2, updated_at: '2026-08-02T00:00:00Z' }] }
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderWithQuery(<SlackThreadDashboard />)
+
+    expect(await screen.findByText('plan.pdf')).toBeInTheDocument()
+    expect(screen.getByText('Download: pending')).toBeInTheDocument()
+    expect(screen.getByText('Extraction: pending')).toBeInTheDocument()
+    expect(screen.getByText('Review the plan')).toBeInTheDocument()
   })
 })

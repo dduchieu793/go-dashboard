@@ -115,8 +115,178 @@ h2 {
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
 }
 
+.slack-panel {
+  margin-bottom: 32px;
+  padding: 32px;
+  border: 1px solid #20382f;
+  border-radius: 24px;
+  background: rgba(13, 29, 24, 0.82);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+}
+
+.slack-empty {
+  margin: 28px 0 0;
+  padding: 24px;
+  border: 1px dashed #315044;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.slack-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.65fr) minmax(0, 1.75fr);
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.slack-thread-list,
+.slack-thread-detail {
+  min-height: 280px;
+  padding: 18px;
+  border: 1px solid #20382f;
+  border-radius: 18px;
+  background: rgba(9, 23, 18, 0.72);
+}
+
+.slack-thread-list button {
+  display: flex;
+  width: 100%;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 12px;
+  border: 1px solid transparent;
+  color: #d6e4dd;
+  background: transparent;
+  text-align: left;
+}
+
+.slack-thread-list button:hover,
+.slack-thread-list button.selected {
+  border-color: #315044;
+  background: #10261e;
+}
+
+.slack-thread-list button > span:first-child,
+.slack-detail-heading > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.slack-thread-list small,
+.slack-detail-heading span {
+  color: #81968d;
+  font-size: 0.75rem;
+}
+
+.slack-detail-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.slack-detail-heading > div:last-child {
+  display: flex;
+  gap: 8px;
+}
+
+.slack-detail-heading button {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 0.78rem;
+}
+
+.slack-source-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.slack-source-grid h3 {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+}
+
+.slack-source-grid article {
+  margin-bottom: 8px;
+  padding: 12px;
+  border: 1px solid #20382f;
+  border-radius: 12px;
+  background: #07110e;
+}
+
+.slack-source-grid article.removed {
+  opacity: 0.55;
+}
+
+.slack-source-grid article > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.slack-source-grid article span,
+.slack-source-grid article p {
+  color: #81968d;
+  font-size: 0.75rem;
+}
+
+.slack-source-grid article p {
+  margin: 8px 0 0;
+}
+
+.attachment-statuses {
+  margin-top: 10px;
+}
+
 .muted {
   color: #81968d;
+}
+
+.source-messages {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid #315044;
+  border-radius: 18px;
+  background: rgba(9, 23, 18, 0.72);
+}
+
+.source-messages-heading,
+.source-message > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.source-messages-heading h3,
+.source-message p {
+  margin: 0;
+}
+
+.source-messages-heading > span,
+.source-message span {
+  color: #81968d;
+  font-size: 0.78rem;
+}
+
+.source-message {
+  padding: 16px;
+  border: 1px solid #20382f;
+  border-radius: 14px;
+  background: #091712;
+}
+
+.source-message p {
+  margin-top: 10px;
+  color: #cbd8d1;
+  white-space: pre-wrap;
 }
 
 .workflow-trigger {
@@ -294,7 +464,9 @@ h2 {
 }
 
 .status-running,
-.status-pending {
+.status-pending,
+.status-dirty,
+.status-syncing {
   color: #fde68a;
   background: rgba(250, 204, 21, 0.12);
 }
@@ -676,8 +848,14 @@ summary {
     padding: 24px 18px;
   }
 
+  .slack-panel {
+    padding: 24px 18px;
+  }
+
   .workflow-trigger,
-  .workflow-layout {
+  .workflow-layout,
+  .slack-layout,
+  .slack-source-grid {
     grid-template-columns: 1fr;
   }
 

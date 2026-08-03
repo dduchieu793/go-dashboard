@@ -16,6 +16,7 @@ import (
 	"github.com/dduchieu793/go-dashboard/backend/internal/llm"
 	"github.com/dduchieu793/go-dashboard/backend/internal/modelrouter"
 	"github.com/dduchieu793/go-dashboard/backend/internal/orchestration"
+	slacksource "github.com/dduchieu793/go-dashboard/backend/internal/slack"
 	"github.com/dduchieu793/go-dashboard/backend/internal/storage"
 	"github.com/dduchieu793/go-dashboard/backend/internal/summary"
 	"github.com/dduchieu793/go-dashboard/backend/internal/workflow"
@@ -86,14 +87,22 @@ func main() {
 		os.Exit(1)
 	}
 	workflowService := orchestration.NewService(
-		orchestration.NewSelector(workflowRegistry, map[string]string{"manual_text": manualSummary.ID}),
+		orchestration.NewSelector(workflowRegistry, map[string]string{
+			"manual_text":  manualSummary.ID,
+			"slack_thread": manualSummary.ID,
+		}),
 		executor,
 		manualSummary.ID,
 	)
+	slackClient := slacksource.NewAPIClient(cfg.Slack.APIBaseURL, cfg.Slack.BotToken, cfg.Slack.RequestTimeout)
+	slackService := slacksource.NewService(store, slackClient, workflowService,
+		cfg.Slack.MaxContextMessages, cfg.Slack.MaxContextChars)
 	router := httpapi.NewRouter(logger, cfg.FrontendOrigin, generalClient, summaryService, workflowService, httpapi.Catalogs{
-		Models:       modelRouter,
-		Capabilities: capabilities,
-		Workflows:    workflowRegistry,
+		Models:             modelRouter,
+		Capabilities:       capabilities,
+		Workflows:          workflowRegistry,
+		Slack:              slackService,
+		SlackSigningSecret: cfg.Slack.SigningSecret,
 	})
 	server := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,

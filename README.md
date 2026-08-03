@@ -22,6 +22,7 @@ AI Summary Dashboard is a local, controlled AI orchestration system. Requests fr
 │       ├── llm/              # LLM connectivity abstraction
 │       ├── modelrouter/      # Capability-to-model profile routing
 │       ├── orchestration/    # Deterministic workflow selection boundary
+│       ├── slack/            # Slack events, synchronization, and context building
 │       ├── storage/          # SQLite migrations and workflow persistence
 │       ├── summary/          # Summary service and prompt construction
 │       ├── trigger/          # Normalized incoming requests
@@ -59,6 +60,10 @@ AI Summary Dashboard is a local, controlled AI orchestration system. Requests fr
    ```
 
 2. Copy `backend/.env.example` to `backend/.env`.
+
+   Slack is optional for manual workflows. To enable Slack ingestion, set `SLACK_SIGNING_SECRET` and
+   `SLACK_BOT_TOKEN`; both must be present. See [Slack text ingestion](docs/slack-text-ingestion.md)
+   for app scopes and event-subscription setup.
 
 3. Install frontend dependencies:
 
@@ -114,6 +119,13 @@ Open http://localhost:5173.
 | `GET` | `/api/v1/system/model-statuses` | Readiness and capability mapping for every model profile |
 | `GET` | `/api/v1/capabilities` | Registered capability metadata and schemas |
 | `GET` | `/api/v1/workflows` | Enabled workflow definitions and routed steps |
+| `POST` | `/api/v1/slack/events` | Signed Slack Events API receiver |
+| `GET` | `/api/v1/threads` | List locally synchronized Slack threads |
+| `GET` | `/api/v1/threads/{id}` | Inspect synchronization and context-version state |
+| `GET` | `/api/v1/threads/{id}/messages` | List locally persisted source messages |
+| `GET` | `/api/v1/threads/{id}/attachments` | List attachment metadata and processing status |
+| `POST` | `/api/v1/threads/{id}/refresh` | Reconcile a thread with Slack and analyze changes |
+| `POST` | `/api/v1/threads/{id}/analyze` | Analyze the current text context idempotently |
 | `POST` | `/api/v1/summaries/generate` | Legacy direct manual summary |
 | `POST` | `/api/v1/workflows/manual-summary/runs` | Start the controlled manual-summary workflow |
 | `GET` | `/api/v1/workflow-runs` | List persisted workflow runs |
@@ -137,4 +149,4 @@ Failed runs can be retried from the dashboard or retry endpoint. Completed upstr
 
 ## Current milestone
 
-The current milestone provides a versioned workflow registry, deterministic request-to-workflow selection with persisted audit metadata, four registered capabilities (including `classify_text`), config-driven multi-model routing, readiness catalogs, asynchronous single-worker execution, bounded retries, explicit retry and cancellation, SQLite persistence, startup recovery, and a workflow-run dashboard. The next enhancement is Slack thread synchronization and versioned text context. File extraction, dynamic planning, arbitrary tools, human approval, parallel execution, and multiple destinations remain later work.
+The current milestone provides Slack text ingestion, local thread synchronization, incremental edits/deletions, attachment metadata and lifecycle visibility, versioned bounded context, exact source-message provenance, controlled multi-model orchestration, SQLite persistence, and startup recovery. Secure Slack file download, extraction, and result publishing are not included yet. Dynamic planning, arbitrary tools, human approval, parallel execution, and multiple destinations remain later work.

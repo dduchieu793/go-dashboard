@@ -15,6 +15,13 @@ func setValidEnvironment(t *testing.T) {
 	t.Setenv("OLLAMA_KEEP_ALIVE", "-1m")
 	t.Setenv("FRONTEND_ORIGIN", "http://localhost:5173")
 	t.Setenv("DATABASE_PATH", "./data/test.db")
+	t.Setenv("SLACK_SIGNING_SECRET", "")
+	t.Setenv("SLACK_BOT_TOKEN", "")
+	t.Setenv("SLACK_API_BASE_URL", "")
+	t.Setenv("SLACK_REQUEST_TIMEOUT", "")
+	t.Setenv("SLACK_MAX_CONTEXT_MESSAGES", "")
+	t.Setenv("SLACK_MAX_CONTEXT_CHARS", "")
+	t.Setenv("ATTACHMENT_STORAGE_PATH", "")
 }
 
 func TestLoad(t *testing.T) {
@@ -61,6 +68,47 @@ func TestLoad(t *testing.T) {
 	}
 	if cfg.ModelProfiles["reasoning"].KeepAlive != "0s" {
 		t.Errorf("reasoning keep-alive = %q, want 0s", cfg.ModelProfiles["reasoning"].KeepAlive)
+	}
+	if cfg.Slack.Enabled() || cfg.Slack.APIBaseURL != "https://slack.com/api" ||
+		cfg.Slack.MaxContextMessages != 200 || cfg.Slack.MaxContextChars != 50000 {
+		t.Errorf("Slack config = %+v", cfg.Slack)
+	}
+	if cfg.AttachmentStoragePath != "./data/attachments" {
+		t.Errorf("AttachmentStoragePath = %q", cfg.AttachmentStoragePath)
+	}
+}
+
+func TestLoadSlackConfiguration(t *testing.T) {
+	setValidEnvironment(t)
+	t.Setenv("SLACK_SIGNING_SECRET", "secret")
+	t.Setenv("SLACK_BOT_TOKEN", "xoxb-token")
+	t.Setenv("SLACK_API_BASE_URL", "http://localhost:9999/api/")
+	t.Setenv("SLACK_REQUEST_TIMEOUT", "25s")
+	t.Setenv("SLACK_MAX_CONTEXT_MESSAGES", "75")
+	t.Setenv("SLACK_MAX_CONTEXT_CHARS", "12000")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.Slack.Enabled() || cfg.Slack.APIBaseURL != "http://localhost:9999/api" ||
+		cfg.Slack.RequestTimeout.String() != "25s" || cfg.Slack.MaxContextMessages != 75 || cfg.Slack.MaxContextChars != 12000 {
+		t.Fatalf("Slack config = %+v", cfg.Slack)
+	}
+}
+
+func TestLoadRejectsPartialSlackCredentials(t *testing.T) {
+	setValidEnvironment(t)
+	t.Setenv("SLACK_SIGNING_SECRET", "secret")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "configured together") {
+		t.Fatalf("Load() error = %v", err)
+	}
+}
+
+func TestLoadRejectsTooSmallSlackContext(t *testing.T) {
+	setValidEnvironment(t)
+	t.Setenv("SLACK_MAX_CONTEXT_CHARS", "999")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "at least 1000") {
+		t.Fatalf("Load() error = %v", err)
 	}
 }
 
